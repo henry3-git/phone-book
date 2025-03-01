@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contacts</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .contact-form {
+            max-width: 400px;
+            margin: auto;
+            background: #111;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+
+        .contact-form label,
+        .contact-form select,
+        .contact-form input {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #222;
+            color: white;
+        }
+
+        .profile-pic {
+            width: 100px;
+            height: 100px;
+            background: #444;
+            border-radius: 50%;
+            margin: auto;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            background-size: cover;
+            background-position: center;
+        }
+
+        button {
+            background: blue;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .add-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: blue;
+            color: white;
+            font-size: 30px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .contact-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .contact-item {
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .contact-item img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <h2>Contacts</h2>
+    <button class="add-button" onclick="toggleForm()">+</button>
+    <div class="contact-form" id="contactForm">
+        <div class="profile-pic" onclick="document.getElementById('profilePicInput').click()">Upload</div>
+        <input type="file" id="profilePicInput" accept="image/*" style="display: none;" onchange="previewProfilePic(event)">
+        <input type="text" id="firstName" placeholder="First Name">
+        <input type="text" id="lastName" placeholder="Last Name">
+        <input type="text" id="phone" placeholder="Phone">
+        <input type="email" id="email" placeholder="Email">
+        <button onclick="saveContact()">Save Contact</button>
+    </div>
+
+    <div class="contact-list" id="contactList"></div>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", loadContacts);
+        let editingIndex = null;
+        let profilePicData = "";
+
+        function toggleForm(editIndex = null) {
+            editingIndex = editIndex;
+            let form = document.getElementById("contactForm");
+            form.style.display = form.style.display === "none" || form.style.display === "" ? "block" : "none";
+        }
+
+        function saveContact() {
+            let contact = {
+                firstName: document.getElementById("firstName").value.trim(),
+                lastName: document.getElementById("lastName").value.trim(),
+                phone: document.getElementById("phone").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                profilePic: profilePicData
+            };
+
+            let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+            if (editingIndex !== null) {
+                contacts[editingIndex] = contact;
+            } else {
+                contacts.push(contact);
+            }
+            localStorage.setItem("contacts", JSON.stringify(contacts));
+
+            loadContacts();
+            toggleForm();
+        }
+
+        function loadContacts() {
+            let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+            let contactList = document.getElementById("contactList");
+            contactList.innerHTML = "";
+
+            contacts.forEach((contact, index) => {
+                let contactItem = document.createElement("div");
+                contactItem.className = "contact-item";
+                contactItem.innerHTML = `
+                    <img src="${contact.profilePic || 'https://via.placeholder.com/50'}" alt="Profile Picture">
+                    <div>
+                        <strong>${contact.firstName} ${contact.lastName}</strong><br>
+                        ${contact.phone}
+                    </div>
+                `;
+                contactList.appendChild(contactItem);
+            });
+        }
+
+        function previewProfilePic(event) {
+            let reader = new FileReader();
+            reader.onload = function() {
+                profilePicData = reader.result;
+                document.querySelector(".profile-pic").style.backgroundImage = `url('${reader.result}')`;
+                document.querySelector(".profile-pic").textContent = "";
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+    </script>
+</body>
+</html>
