@@ -7,8 +7,8 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #000;
-            color: white;
+            background-color: cream;
+            color: black;
             padding: 20px;
             text-align: center;
             position: relative;
@@ -17,10 +17,10 @@
         .search-bar {
             width: 100%;
             padding: 10px;
-            background: #111;
+            background: cream;
             border: none;
             border-radius: 5px;
-            color: white;
+            color: black;
         }
 
         .contact-list {
@@ -29,7 +29,7 @@
         }
 
         .contact-item {
-            background: #222;
+            background: cream;
             padding: 10px;
             border-radius: 5px;
             margin-bottom: 10px;
@@ -53,6 +53,18 @@
             color: gray;
             position: relative;
         }
+        .cancel-icon {
+    font-size: 24px;
+    position: absolute;
+    top: 8px;
+    right: 10px;  /* Move it to the right side */
+    cursor: pointer;
+    color: #888;
+}
+
+.cancel-icon:hover {
+    color: red; /* Change color when hovered */
+}
 
         .options-menu {
             display: none;
@@ -118,11 +130,23 @@
             background-color: #222;
             color: white;
         }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .contact-form {
+                width: 90%;
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
     <h2>Contacts</h2>
-    <input type="text" class="search-bar" placeholder="Search contacts">
+    <input type="text" class="search-bar" placeholder="Search contacts" oninput="loadContacts()">
+
     <div class="contact-list" id="contactList"></div>
     <button class="add-button" onclick="toggleForm()">+</button>
     
@@ -132,11 +156,23 @@
         <input type="text" id="lastName" placeholder="Last Name">
         <input type="text" id="phone" placeholder="Phone">
         <input type="email" id="email" placeholder="Email">
-        <button onclick="saveContact()">Save Contact</button>
+        <select id="storageOption">
+            <option value="phone">Phone Storage</option>
+            <option value="sim">SIM Card</option>
+            <option value="google">Google Contacts</option>
+        </select>        
+        <button id="saveButton" onclick="saveContact()">Save Contact</button>
+        <span id="cancelIcon" onclick="cancelContact()" class="cancel-icon">×</span>
+        
+        
+
     </div>
     
     <script>
         document.addEventListener("DOMContentLoaded", loadContacts);
+
+        let profilePicData = ""; // Initialize profilePicData
+        let editIndex = null; // Variable to keep track of the index of the contact being edited
         
         function toggleForm() {
             let form = document.getElementById("contactForm");
@@ -144,7 +180,7 @@
         }
 
         function toggleOptions(index) {
-            let menu = document.getElementById(`optionsMenu${index}`);
+            let menu = document.getElementById(optionsMenu${index});
             menu.style.display = menu.style.display === "none" || menu.style.display === "" ? "block" : "none";
         }
 
@@ -162,6 +198,18 @@
             loadContacts();
         }
 
+        function editContact(index) {
+            let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+            let contact = contacts[index];
+            document.getElementById("firstName").value = contact.firstName;
+            document.getElementById("lastName").value = contact.lastName;
+            document.getElementById("phone").value = contact.phone;
+            document.getElementById("email").value = contact.email;
+            profilePicData = contact.photo;
+            editIndex = index; // Set the index of the contact being edited
+            toggleForm();
+        }
+
         function previewProfilePic(event) {
             let reader = new FileReader();
             reader.onload = function() {
@@ -169,6 +217,134 @@
             };
             reader.readAsDataURL(event.target.files[0]);
         }
+        function cancelContact() {
+    document.getElementById("contactForm").reset(); // Clears the form
+    profilePicData = ""; // Reset profile picture data
+    editIndex = null; // Reset edit index
+    toggleForm(); // Close the form
+}
+
+
+        function loadContacts() {
+    let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+    let contactList = document.getElementById("contactList");
+    let searchQuery = document.querySelector(".search-bar").value.toLowerCase();
+    contactList.innerHTML = ""; 
+
+    let filteredContacts = contacts.filter(contact => 
+        contact.firstName.toLowerCase().includes(searchQuery) ||
+        contact.lastName.toLowerCase().includes(searchQuery) ||
+        contact.phone.includes(searchQuery)
+    );
+
+    if (filteredContacts.length === 0) {
+        contactList.innerHTML = "<p>No contacts found.</p>";
+        return;
+    }
+
+    filteredContacts.forEach((contact, index) => {
+        let contactItem = document.createElement("div");
+        contactItem.classList.add("contact-item");
+
+        let contactPhoto = document.createElement("img");
+        contactPhoto.classList.add("contact-photo");
+        contactPhoto.src = contact.photo || "default-photo.png";
+
+        let contactInfo = document.createElement("div");
+        contactInfo.innerHTML = <strong>${contact.firstName} ${contact.lastName}</strong><br>${contact.phone}<br>${contact.email};
+
+        let contactOptions = document.createElement("div");
+        contactOptions.classList.add("contact-options");
+        contactOptions.innerHTML = "⋮";
+        contactOptions.onclick = () => toggleOptions(index);
+
+        let optionsMenu = document.createElement("div");
+        optionsMenu.classList.add("options-menu");
+        optionsMenu.id = optionsMenu${index};
+        optionsMenu.innerHTML = `
+            <button onclick="editContact(${index})">Edit</button>
+            <button onclick="deleteContact(${index})">Delete</button>
+        `;
+        contactOptions.appendChild(optionsMenu);
+
+        contactItem.appendChild(contactPhoto);
+        contactItem.appendChild(contactInfo);
+        contactItem.appendChild(contactOptions);
+        contactList.appendChild(contactItem);
+    });
+}
+
+
+function saveContact() {
+    let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+    let newContact = {
+        firstName: document.getElementById("firstName").value.trim(),
+        lastName: document.getElementById("lastName").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        photo: profilePicData || "",
+        blocked: false
+    };
+
+    let storageOption = document.getElementById("storageOption").value; // Get storage option
+
+
+    if (editIndex !== null) {
+        contacts[editIndex] = newContact;
+        editIndex = null;
+    } else {
+        // Check if contact already exists
+        let existingContact = contacts.find(contact => 
+            contact.firstName === newContact.firstName &&
+            contact.lastName === newContact.lastName &&
+            contact.phone === newContact.phone &&
+            contact.email === newContact.email
+        );
+
+        if (existingContact) {
+        let confirmSave = confirm("A contact with the same name and phone number already exists. Do you want to save it anyway?");
+        if (!confirmSave) {
+            return; // Stop saving if the user chooses to discard
+        }
+    }
+
+        contacts.push(newContact);
+    }
+
+    if (storageOption === "phone") {
+        localStorage.setItem("contacts", JSON.stringify(contacts));
+        loadContacts();
+    } else if (storageOption === "sim") {
+        alert("Saving to SIM is not supported in browsers.");
+    } else if (storageOption === "google") {
+        saveToGoogleContacts(newContact);
+    }
+
+    toggleForm();
+}
+function cancelContact() {
+    document.getElementById("firstName").value = "";
+    document.getElementById("lastName").value = "";
+    document.getElementById("phone").value = "";
+    document.getElementById("email").value = "";
+    document.getElementById("photo").value = ""; // Reset file input
+    profilePicData = ""; // Reset profile picture data
+    editIndex = null; // Reset edit index
+    toggleForm(); // Close the form
+}
+
+
+
+function saveToGoogleContacts(contact) {
+    let googleContactUrl = `mailto:?subject=New Contact&body=
+        First Name: ${contact.firstName}%0D%0A
+        Last Name: ${contact.lastName}%0D%0A
+        Phone: ${contact.phone}%0D%0A
+        Email: ${contact.email}`;
+
+    window.location.href = googleContactUrl;
+}
+
     </script>
 </body>
 </html>
